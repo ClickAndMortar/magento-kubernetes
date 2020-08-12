@@ -1,4 +1,5 @@
 .git
 .idea
-var
-vendor
+magento/var
+magento/vendor
+magento/generated
