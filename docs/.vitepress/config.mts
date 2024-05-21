@@ -37,12 +37,12 @@ const config = defineConfig({
       copyright: 'Copyright &copy; 2024-present <a href="https://www.clickandmortar.fr">Click &amp; Mortar</a>'
     }
   },
-  head: [['link', { rel: 'icon', href: '/images/logo-transp.png' }]],
+  head: [['link', { rel: 'icon', href: '/magento-kubernetes/images/logo-transp.png' }]],
   ignoreDeadLinks: true,
   base: '/magento-kubernetes/',
   sitemap: {
     hostname: 'https://clickandmortar.github.io/magento-kubernetes/'
-  }
+  },
 })
 
 export default withMermaid({

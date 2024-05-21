@@ -64,16 +64,21 @@ For our PHP 8.3 base image, the missing extensions we need to install are:
 * `xsl`
 * `zip`
 
+Although not listed explicitly, `opcache` and `pcntl` extensions are also required for optimal performance.
+
 Let's add the necessary intrusctions in our `Dockerfile`:
 
 ```dockerfile
 # Install required PHP extensions system dependencies
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    libfreetype6-dev libicu-dev libjpeg62-turbo-dev libpng-dev libxslt1-dev libzip-dev
+    libfreetype6-dev libicu-dev libjpeg62-turbo-dev libpng-dev libxslt1-dev libzip-dev libwebp-dev
+
+# Configure PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp
 
 # Install required PHP extensions
-RUN docker-php-ext-install -j$(nproc) bcmath gd intl pdo_mysql soap sockets xsl zip
+RUN docker-php-ext-install -j$(nproc) bcmath gd intl opcache pcntl pdo_mysql soap sockets xsl zip
 ```
 
 ## Composer
@@ -233,11 +238,89 @@ Once the static content is deployed, we can move back the `env.php` file:
 RUN mv app/etc/env.php.bak app/etc/env.php
 ```
 
-## PHP &amp; FPM configuration
+## PHP configuration
+
+Although the PHP configuration is generally good enough for most cases, you may want to tweak it to your needs.
+
+Here is an example of additional PHP configuration you may define:
+
+```ini
+date.timezone = Etc/UTC
+memory_limit = 512M
+log_errors = On
+display_errors = Off
+display_startup_errors = Off
+expose_php = Off
+
+opcache.enable = 1
+opcache.enable_cli = 1
+opcache.save_comments = 1
+opcache.memory_consumption = 1024
+opcache.interned_strings_buffer = 32
+opcache.max_accelerated_files = 130987
+opcache.enable_file_override = 1
+
+# When set to 0, you'll need to restart the PHP process to apply changes to PHP files, which should never happen in production
+opcache.consistency_checks = 0
+opcache.validate_timestamps = 0
+
+realpath_cache_size = 10M
+realpath_cache_ttl = 7200
+
+# Increase the maximum file upload size ; those should be set according to your needs (i.e. for image uploads from admin)
+upload_max_filesize = 20M
+post_max_size = 20M
+```
+
+> [!TIP]
+> PHP is able to read environment variables, so you may want to define some of the configuration options as environment variables, such as `memory_limit`, etc.
+> Syntax is `memory_limit = ${PHP_MEMORY_LIMIT}`.
+
+The content of the above ini file should be saved in a file, such as `custom.ini`, along yout `Dockerfile`, and copied to the image:
+
+```dockerfile
+COPY custom.ini /usr/local/etc/php/conf.d/custom.ini
+```
+
+## FPM configuration
+
+Here is a recommended pool configuration:
+
+```ini
+[www]
+user = www-data
+group = www-data
+
+listen = 127.0.0.1:9000
+
+pm = static
+pm.max_children = 10 # Or use an environment variable, such as ${PHP_FPM_MAX_CHILDREN}
+pm.status_path = /status
+# Useful to avoid memory leaks ; processes will be restarted after handling 10 requests
+pm.max_requests = 10
+
+# Useful to send logs from all workers to the main process, which will then send them to stdout
+catch_workers_output = yes
+decorate_workers_output = no
+```
+
+The content of the above file should be saved in a file, such as `www.conf`, along yout `Dockerfile`, and copied to the image:
+
+```dockerfile
+COPY www.conf /usr/local/etc/php-fpm.d/www.conf
+```
+
+> [!IMPORTANT]
+> As you may have noticed, we're using `pm = static` instead of `pm = dynamic`.<br/>
+> When working in a Kubernetes environment, we need to have control about how much resources our pods are using.
+> Using `pm = static` allows us to set a fixed number of workers, which is easier to manage in a Kubernetes environment.<br/>
+> We'll dig deeper into this in the Kubernetes resources allocation section.
 
 ## nginx
 
-TODO
+Now that we have our PHP-FPM image ready, we need to add an nginx server to serve our Magento / Adobe Commerce project, communicating with PHP-FPM using fastcgi.
+
+To serve static assets in an efficient way, we'll also copy the `pub/static` directory to the nginx image.
 
 ## Multi-stage build
 
@@ -246,8 +329,3 @@ nginx / node.js
 ## Wrapping up
 
 TODO
-
-```mermaid
-flowchart LR
-  Start --> Stop
-```
