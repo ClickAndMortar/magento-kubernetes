@@ -244,37 +244,15 @@ Although the PHP configuration is generally good enough for most cases, you may 
 
 Here is an example of additional PHP configuration you may define:
 
-```ini
-date.timezone = Etc/UTC
-memory_limit = 512M
-log_errors = On
-display_errors = Off
-display_startup_errors = Off
-expose_php = Off
+::: code-group
 
-opcache.enable = 1
-opcache.enable_cli = 1
-opcache.save_comments = 1
-opcache.memory_consumption = 1024
-opcache.interned_strings_buffer = 32
-opcache.max_accelerated_files = 130987
-opcache.enable_file_override = 1
+<<< @/docker/php/custom.ini{ini}
 
-# When set to 0, you'll need to restart the PHP process to apply changes to PHP files, which should never happen in production
-opcache.consistency_checks = 0
-opcache.validate_timestamps = 0
-
-realpath_cache_size = 10M
-realpath_cache_ttl = 7200
-
-# Increase the maximum file upload size ; those should be set according to your needs (i.e. for image uploads from admin)
-upload_max_filesize = 20M
-post_max_size = 20M
-```
+:::
 
 > [!TIP]
 > PHP is able to read environment variables, so you may want to define some of the configuration options as environment variables, such as `memory_limit`, etc.
-> Syntax is `memory_limit = ${PHP_MEMORY_LIMIT}`.
+> Syntax is `memory_limit = ${PHP_MEMORY_LIMIT}`, which can be useful to have a different memory limit between CLI and FPM Pods.
 
 The content of the above ini file should be saved in a file, such as `custom.ini`, along yout `Dockerfile`, and copied to the image:
 
@@ -286,23 +264,11 @@ COPY custom.ini /usr/local/etc/php/conf.d/custom.ini
 
 Here is a recommended pool configuration:
 
-```ini
-[www]
-user = www-data
-group = www-data
+::: code-group
 
-listen = 127.0.0.1:9000
+<<< @/docker/php/www.conf{ini}
 
-pm = static
-pm.max_children = 10 # Or use an environment variable, such as ${PHP_FPM_MAX_CHILDREN}
-pm.status_path = /status
-# Useful to avoid memory leaks ; processes will be restarted after handling 10 requests
-pm.max_requests = 10
-
-# Useful to send logs from all workers to the main process, which will then send them to stdout
-catch_workers_output = yes
-decorate_workers_output = no
-```
+:::
 
 The content of the above file should be saved in a file, such as `www.conf`, along yout `Dockerfile`, and copied to the image:
 
@@ -322,10 +288,124 @@ Now that we have our PHP-FPM image ready, we need to add an nginx server to serv
 
 To serve static assets in an efficient way, we'll also copy the `pub/static` directory to the nginx image.
 
+> [!INFO]
+> The same way we did for the PHP image, we'll be using the [official nginx image](https://hub.docker.com/_/nginx) as a base image.<br/>
+> We recommend using the `alpine` version, which is lightweight and secure.<br/>
+> As with PHP image, you may want to use a specific version of the image to avoid any surprises. 
+
+A sample `nginx.conf.sample` file is provided in the Magento / Adobe Commerce repository, which you can use as a base for your configuration.
+
+Create a `vhost.conf` file:
+
+```nginx
+upstream fastcgi_backend {
+   server  127.0.0.1:9000;
+}
+
+server {
+   listen 80;
+   server_name <your-magento-hostname>;
+   set $MAGE_ROOT /app;
+   set $MAGE_DEBUG_SHOW_ARGS 0;
+
+   # Include the content of `nginx.conf.sample` here
+}
+```
+
+Additionnaly, you may change the following in the resulting `vhost.conf` file:
+
+* Uncomment the `# expires max;` line to enable caching of static assets, in `location /static/` block
+* Change the access log format to JSON, to be able to parse it easily in a log aggregator, such as ELK stack, CloudWatch, etc.:
+
+::: code-group
+
+```nginx [At root level of vhost.conf]
+log_format nginxlog_json escape=json 
+    '{ "timestamp": "$time_iso8601", '
+    '"remote_addr": "$remote_addr", '
+    '"body_bytes_sent": $body_bytes_sent, '
+    '"request_time": $request_time, '
+    '"response_status": $status, '
+    '"request": "$request", '
+    '"request_method": "$request_method", '
+    '"host": "$host",'
+    '"remote_user": "$remote_user",'
+    '"request_uri": "$request_uri",'
+    '"query_string": "$query_string",'
+    '"upstream_addr": "$upstream_addr",'
+    '"http_x_forwarded_for": "$http_x_forwarded_for",'
+    '"http_x_real_ip": "$http_x_real_ip",'
+    '"http_referrer": "$http_referer", '
+    '"http_user_agent": "$http_user_agent", '
+    '"http_version": "$server_protocol" }';
+```
+
+```nginx [Within the server block]
+access_log /dev/stdout nginxlog_json;
+```
+
+:::
+
+The resulting `Dockefile` should look like this:
+
+```dockerfile
+FROM nginx:alpine
+
+WORKDIR /app
+
+COPY vhost.conf /etc/nginx/conf.d/default.conf
+```
+
+But hey, we don't have the `pub/static` directory yet! Let's discuss this in the next section.
+
 ## Multi-stage build
 
-nginx / node.js
+A Docker multi-stage build is a method that allows for the creation of smaller, more efficient container images by using multiple intermediate stages in a single `Dockerfile`, thereby isolating and discarding unnecessary build artifacts.
+
+It also allows copying files from one stage to another, which is useful in our case, as we need to copy the `pub/static` directory from the PHP image to the nginx image.
+
+Our `Dockerfile` will eventually look like this:
+
+```dockerfile
+# PHP-FPM image
+FROM php:8.3.7-fpm-bookworm AS php
+
+...
+
+# Nginx image
+FROM nginx:alpine
+
+...
+
+COPY --from=php /app/pub/static /app/pub/static
+```
 
 ## Wrapping up
 
-TODO
+At this point, you should have a working `Dockerfile` that builds a Docker image containing your Magento / Adobe Commerce project files, ready to be deployed.
+
+To build the resulting PHP-FPM and nginx images, run the following commands:
+
+```shell
+docker build --target php -t my-namespace/magento-php:<tag> .
+docker build --target nginx -t my-namespace/magento-nginx:<tag> .
+```
+
+Then push the images to your container registry, using `docker push`.
+
+> [!TIP]
+> When cross-building images for different architectures, you may want to use the `--platform` flag to specify the target architecture, such as `linux/amd64`, `linux/arm64`, etc.
+
+The complete `Dockerfile` can be found [here](https://github.com/ClickAndMortar/magento-kubernetes/blob/main/Dockerfile).
+
+## Tagging strategy
+
+It's a good practice to **tag your images with the Git commit (short) hash**, to be able to trace back the image to the code it was built from.
+
+To make sure your deployments are consistent between environments, you should **use the same image for all environments**, and use environment variables to configure the image.
+
+As Docker images can have multiple tags, here are some additional tags you may want to use:
+
+* `latest`: the latest version of the image
+* `<tag>`: the Git tag the image was built from
+* `<branch>`: the Git branch the image was built from
