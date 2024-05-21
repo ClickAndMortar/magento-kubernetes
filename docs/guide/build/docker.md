@@ -1,0 +1,253 @@
+---
+title: Docker
+---
+
+# Docker
+
+In this section, we'll create a `Dockerfile` to build our Docker image and deploy it.
+
+The instructions below will be using the [official PHP Docker image](https://hub.docker.com/_/php) as a base image.
+You may need to adapt it to your needs, depending on your project requirements, such as PHP version, extensions, etc.
+
+Since Magento 2.4.7 is compatible with PHP 8.3, we'll be using this version.
+
+## Choice of base image
+
+When choosing a PHP base image, we'd generally go with `8.3-fpm`, which seems to be the most popular choice.
+
+However, you should consider the following:
+
+* This image is based on Debian, which may not be the best choice for production, as it's not as lightweight as Alpine
+* The underlying Debian version may be upgraded, which may break your build: `8.3-fpm` is available on `bookworm` (`8.3-fpm-bookworm`) and `bullseye` (`8.3-fpm-bullseye`)
+* Although using a minor version of PHP is generally safe, you may want to use a specific version, such as `8.3.7-fpm` to avoid any surprises
+* If you need to have reproducible builds, you may use the (short or full) `sha256` digest of the image, such as `php@sha256:606222f6366a` instead of `php:8.3.7-fpm-bookworm`
+
+> [!TIP]
+> A general rule of thumb is to use the most specific version of the base image, such as `8.3.7-fpm-bookworm`, to avoid any surprises, but still be able to benefit from security updates.
+
+At this point, your `Dockerfile` should look like this:
+
+```dockerfile
+FROM php:8.3.7-fpm-bookworm
+```
+
+Let's also define `/app` as our base working directory, where we'll be copying our Magento / Adobe Commerce project files:
+
+```dockerfile
+WORKDIR /app
+```
+
+We'll also define the `MAGE_MODE` environment variable, which is required by Magento / Adobe Commerce to know we're building for production:
+
+```dockerfile
+ENV MAGE_MODE=production
+```
+
+## PHP extensions
+
+Now that we have our base image, we need to install the necessary PHP extensions and their dependencies.
+
+Required PHP extensions are listed in the [official system requirements](https://experienceleague.adobe.com/en/docs/commerce-operations/installation-guide/system-requirements#php-extensions), under `Commerce on-premises` tab.
+
+> [!NOTE]
+> This guide targets PHP 8.3, which already includes some of the required extensions.
+> You may need to install additional extensions, run `docker run --rm php:<tag> php -m` to list the already installed extensions in the image you're planning to use.
+
+For our PHP 8.3 base image, the missing extensions we need to install are:
+
+* `bcmath`
+* `gd`
+* `intl`
+* `pdo_mysql`
+* `soap`
+* `sockets`
+* `xsl`
+* `zip`
+
+Let's add the necessary intrusctions in our `Dockerfile`:
+
+```dockerfile
+# Install required PHP extensions system dependencies
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    libfreetype6-dev libicu-dev libjpeg62-turbo-dev libpng-dev libxslt1-dev libzip-dev
+
+# Install required PHP extensions
+RUN docker-php-ext-install -j$(nproc) bcmath gd intl pdo_mysql soap sockets xsl zip
+```
+
+## Composer
+
+Next, we need to install [Composer](https://getcomposer.org/), which is a dependency manager for PHP.
+
+> [!NOTE]
+> Magento / Adobe Commerce 2.4.7 is compatible with Composer 2.7.
+> Similar to PHP base image, you may want to use a specific version of Composer to avoid any surprises.
+> However, in such case, you may need to update the `Dockerfile` when a new version of Composer is released.
+
+To install Composer 2.x latest version, add the following instructions to your `Dockerfile`:
+
+```dockerfile
+RUN curl -sSL https://getcomposer.org/download/latest-2.x/composer.phar -o /usr/local/bin/composer \
+    && chmod +x /usr/local/bin/composer
+```
+
+To benefit from Docker layer cache when rebuilding without change to `composer.json` or `composer.lock`, you may want to copy `composer.json` and `composer.lock` files separately, along with `auth.json` (required to authenticate against `repo.magento.com`):
+
+```dockerfile
+COPY composer.json composer.lock auth.json /app/
+```
+
+Then, run `composer install` to install the dependencies:
+
+```dockerfile
+RUN composer install \
+    --no-interaction \
+    --no-dev \
+    --optimize-autoloader\
+    --no-progress\
+    --no-suggest
+```
+
+At this point, the `/app` directory in your Docker image looks like this:
+
+```plaintext
+.
+|-- auth.json
+|-- composer.json
+|-- composer.lock
+`-- vendor
+    |-- 2tvenom
+    |-- astock
+    |-- autoload.php
+    |-- aws
+    |-- bacon
+    |-- bin
+    |-- braintree
+    |-- brick
+    |-- christian-riesen
+    |-- colinmollenhour
+    |-- composer
+    |-- dasprid
+    |-- elasticsearch
+    |-- endroid
+    |-- ezimuel
+    |-- ezyang
+    |-- firebase
+    |-- google
+    |-- guzzlehttp
+    |-- justinrainbow
+    |-- laminas
+    |-- league
+    |-- magento
+    |-- monolog
+    |-- ... (and many more)
+    |-- webmozart
+    |-- webonyx
+    `-- wikimedia
+```
+
+The `auth.json` file can be safely removed from the image after running `composer install`:
+
+```dockerfile
+RUN rm -f auth.json
+```
+
+## Magento / Adobe Commerce
+
+Now that we have Composer installed and our dependencies ready, we can copy our Magento / Adobe Commerce project files to the image.
+
+```dockerfile
+COPY . /app/
+```
+
+You may want to add a `.dockerignore` file to exclude unnecessary files and directories from being copied to the image.
+
+For example, you may want to exclude `node_modules`, `vendor`, `.git`, etc.
+
+The following directories are generally excluded:
+
+```
+pub/media
+pub/static
+var
+```
+
+> [!NOTE]
+> As the image should be built from a raw clone of the repository, you may not need to exclude anything.
+
+### DI compilation
+
+The `setup:di:compile` command generates the `generated` directory, which contains generated code and classes.
+
+To avoid running into memory issues, you may want to increase the memory limit for the PHP process:
+
+```dockerfile
+RUN php -d memory_limit=2G bin/magento setup:di:compile
+```
+
+### Static content
+
+This part is one of the trickiest, as it generates static content for all locales and themes, and needs to be aware of the websites structure.
+
+Therefore, you should dump the necessary database configuration into `app/etc/config.php`:
+
+```shell
+bin/magento app:config:dump scopes themes i18n
+```
+
+> [!IMPORTANT]
+> This command should be run outside of the Docker image, as it requires a database connection.
+> The resulting `config.php` should be added to the VCS, so it's available when building the Docker image.
+
+> [!NOTE]
+> This command will need to be run every time you change the configuration, such as changing the websites structure, adding new themes, etc.
+
+Additionally, the `app/etc/env.php` needs to be moved temporarily during the static content deployment, to avoid database lookup issues:
+
+```dockerfile
+RUN mv app/etc/env.php app/etc/env.php.bak
+```
+
+Then, you can run the `setup:static-content:deploy` command:
+
+```dockerfile
+RUN php -d memory_limit=2G bin/magento setup:static-content:deploy \
+    --max-execution-time=3600 \
+    --jobs=$(nproc)
+```
+
+To make this process more efficient, you may want to run the `setup:static-content:deploy` command for a specific locale and theme only.
+The following options are available:
+
+* `--area` (repeatable): `frontend` or `adminhtml`, defaults to `all`
+* `--theme` (repeatable): themes to build, i.e. `Magento/luma`, `Magento/backend`, defaults to `all`
+* `--language` (repeatable): locales to build, i.e. `en_US`, `de_DE`, defaults to `all`
+
+> [!IMPORTANT]
+> Note that even in headless setups, the `frontend` area is required, notably to generate emails and PDFs.
+
+Once the static content is deployed, we can move back the `env.php` file:
+
+```dockerfile
+RUN mv app/etc/env.php.bak app/etc/env.php
+```
+
+## PHP &amp; FPM configuration
+
+## nginx
+
+TODO
+
+## Multi-stage build
+
+nginx / node.js
+
+## Wrapping up
+
+TODO
+
+```mermaid
+flowchart LR
+  Start --> Stop
+```

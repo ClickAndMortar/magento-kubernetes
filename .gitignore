@@ -1,3 +1,7 @@
 .idea
 auth.json
 magento
+
+# Vitepress
+docs/.vitepress/dist
+docs/.vitepress/cache
