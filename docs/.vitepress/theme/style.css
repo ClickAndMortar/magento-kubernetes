@@ -137,3 +137,7 @@
   --docsearch-primary-color: var(--vp-c-brand-1) !important;
 }
 
+.mermaid svg {
+    display: block;
+    margin: 0 auto;
+}

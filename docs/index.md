@@ -15,10 +15,13 @@ hero:
       link: /guide/introduction
 
 features:
-  - title: Feature A
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature B
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
-  - title: Feature C
-    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
+  - title: Scalability and Flexibility
+    icon: ↕️
+    details: Effortlessly scale your Magento store to handle increased traffic with Kubernetes' auto-scaling capabilities
+  - title: Automated Rollouts and Rollbacks
+    icon: 🔄
+    details: Ensure seamless updates and quick recoveries with Kubernetes' automated deployment strategies
+  - title: High Availability and Fault Tolerance
+    icon: 🛡️
+    details: Achieve maximum uptime and reliability with Kubernetes' self-healing and load-balancing features
 ---

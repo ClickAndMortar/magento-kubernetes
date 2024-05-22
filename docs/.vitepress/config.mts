@@ -15,16 +15,27 @@ const config = defineConfig({
       { text: 'Introduction', link: '/guide/introduction' },
       { text: 'Requirements', link: '/guide/requirements' },
       {
-        text: 'Configuration',
+        text: 'Preparation',
         items: [
-          { text: 'Environment variables', link: '/guide/configuration/environment-variables' },
+          { text: 'Environment variables', link: '/guide/preparation/environment-variables' },
         ]
       },
       {
         text: 'Build',
         items: [
           { text: 'Introduction', link: '/guide/build/introduction' },
-          { text: 'Docker', link: '/guide/build/docker' },
+          { text: 'Docker image', link: '/guide/build/docker' },
+          { text: 'New Relic', link: '/guide/build/newrelic' },
+          { text: 'Optimization', link: '/guide/build/optimization' },
+          { text: 'Security', link: '/guide/build/security' },
+        ]
+      },
+      {
+        text: 'Deployment',
+        items: [
+          { text: 'Introduction', link: '/guide/deployment/introduction' },
+          { text: 'External services', link: '/guide/deployment/external-services' },
+          { text: 'Architecture', link: '/guide/deployment/architecture' },
         ]
       }
     ],
@@ -35,6 +46,9 @@ const config = defineConfig({
     footer: {
       message: 'Released under the MIT License.<br/> This project is not affiliated with, endorsed by, or sponsored by Adobe Inc. "Magento" and "Adobe Commerce" are trademarks of Adobe Inc.<br/> All trademarks and registered trademarks are the property of their respective owners.',
       copyright: 'Copyright &copy; 2024-present <a href="https://www.clickandmortar.fr">Click &amp; Mortar</a>'
+    },
+    search: {
+      provider: 'local',
     }
   },
   head: [['link', { rel: 'icon', href: '/magento-kubernetes/images/logo-transp.png' }]],

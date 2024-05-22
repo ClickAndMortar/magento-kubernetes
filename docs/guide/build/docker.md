@@ -291,7 +291,8 @@ To serve static assets in an efficient way, we'll also copy the `pub/static` dir
 > [!INFO]
 > The same way we did for the PHP image, we'll be using the [official nginx image](https://hub.docker.com/_/nginx) as a base image.<br/>
 > We recommend using the `alpine` version, which is lightweight and secure.<br/>
-> As with PHP image, you may want to use a specific version of the image to avoid any surprises. 
+> As with PHP image, you may want to use a specific version of the image to avoid any surprises.<br/>
+> Note that Adobe recommends using version 1.24 of nginx for Magento 2.4.7.
 
 A sample `nginx.conf.sample` file is provided in the Magento / Adobe Commerce repository, which you can use as a base for your configuration.
 
