@@ -25,9 +25,9 @@ We will be using the following Kubernetes main resources:
 
 Additionally, we will also be using the following resources:
 
-* **ConfigMaps**: to store environment variables
-* **Secrets**: to store sensitive environment variables
-* **PersisventVolumes** / **PersistentVolumeClaims**: to store persistent data (media, etc.) and share it between pods
+* `ConfigMaps`: to store environment variables
+* `Secrets`: to store sensitive environment variables
+* `PersisventVolumes` / `PersistentVolumeClaims`: to store persistent data (cache, media, etc.) and share it between pods
 
 ## Components
 
@@ -63,7 +63,38 @@ One `Deployment` needs to be created for each consumer, each containing a single
 > At the time of writing, Magento / Adobe Commerce does not handle UNIX signals properly, which means that the containers will not be able to handle graceful shutdowns.
 > Therefore, the `Pods` will be terminated immediately, without giving the application time to finish processing the current message.
 
-TODO: fork handling (standalone process)?
+> [!INFO]
+> The `queue/consumers_wait_for_messages` configuration setting in `env.php` must be set to `1` to avoid having the consumers restarting too often.
+
+At the time of writing, the following consumers are available:
+
+* `saveConfigProcessor`
+* `product_action_attribute.update`
+* `product_action_attribute.website.update`
+* `catalog_website_attribute_value_sync`
+* `media.storage.catalog.image.resize`
+* `exportProcessor`
+* `inventory.source.items.cleanup`
+* `inventory.mass.update`
+* `inventory.reservations.cleanup`
+* `inventory.reservations.update`
+* `inventory.reservations.updateSalabilityStatus`
+* `inventory.indexer.sourceItem`
+* `inventory.indexer.stock`
+* `media.content.synchronization`
+* `media.gallery.renditions.update`
+* `media.gallery.synchronization`
+* `codegeneratorProcessor`
+* `sales.rule.update.coupon.usage`
+* `sales.rule.quote.trigger.recollect`
+* `product_alert`
+* `async.operations.all`
+
+You might not need tu run all the consumers, depending on your use case.
+
+> [!INFO]
+> Although it is not the recommended way to run the consumers in Kubernetes, you can use the `consumers_runner` cron (in `consumers` group) to run all the consumers specified in `cron_consumers_runner/cron_run` in `env.php`.<br/>
+> An interesting option would be having individual `Deployments` for critical / time-sensitive consumers, and using the `consumers_runner` cron for the rest.
 
 ### Crons
 
@@ -108,4 +139,162 @@ As we need to allow concurrent executions of the same cron, to avoid leaving job
 > Allowing concurrent executions of the same cron might lead to have many `Pods` running at the same time, which might lead to performance issues.
 > This should be monitored and adjusted as needed.
 
-TODO: cron groups
+#### Using cron groups
+
+To avoid having too many `Pods` running at the same time, you can use cron groups to trigger the cron jobs.
+
+The Magento / Adobe Commerce `cron:run` command supports the two following options:
+
+* `--group`: to run only the cron jobs that belong to the specified group
+* `--exclude-group`: to run all the cron jobs except the ones that belong to the specified group
+
+You can use these options to create cron groups and run the cron jobs in a more controlled way.
+
+At the time of writing, the following cron groups are available:
+
+* `consumers`
+* `default`
+* `index`
+* `payment_services_data_export`
+* `payment_services_order_sync`
+
+For instance, you might want to create one `CronJob` for the `index` group, and another one for all the other groups by excluding the `index` one:
+
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": false}} }%%
+graph TD
+    subgraph CronJobIndex["`**CronJob**
+    Schedule: every minute
+    Group: _index_`"]
+    end
+    subgraph CronJobOther["`**CronJob**
+    Schedule: every minute
+    Group: all except _index_`"]
+    end
+    subgraph JobIndex["`**Job**`"]
+    end
+    subgraph JobOther["`**Job**`"]
+    end
+    subgraph PodIndex["`**Pod**`"]
+        A["`**Container**
+        PHP CLI`"]
+    end
+    subgraph PodOther["`**Pod**`"]
+        B["`**Container**
+        PHP CLI`"]
+    end
+    CronJobIndex -- Creates --> JobIndex
+    CronJobOther -- Creates --> JobOther
+    JobIndex -- Creates --> PodIndex
+    JobOther -- Creates --> PodOther
+```
+
+## Networking
+
+Two main networking configurations are possible for web servers:
+
+* Using a Kubernetes **Ingress** with an Ingress Controller, to route the traffic to the web servers
+* Using a cloud provider's layer 7 **Load Balancer** (i.e. AWS Application Load Balancer), to route the traffic to the web servers, within the VPC
+
+We'll focus on the Ingress configuration, as it is the most common way to route the traffic to the web servers.
+
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": false}} }%%
+flowchart LR
+    Request
+    subgraph IngressNS["`**System namespace**`"]
+        IngressPod["`**Pod**
+        ingress controller`"]
+    end
+    subgraph MagentoNS["`**Magento namespace**`"]
+        direction TB
+        Ingress["`**Ingress**`"]
+        Service["`**Service**`"]
+        subgraph Pod["`**Pod**`"]
+            ContainerNginx["`**Container**
+            nginx`"]
+            ContainerPhpFpm["`**Container**
+            PHP-FPM`"]
+            ContainerNginx -- TCP/9000 --> ContainerPhpFpm
+        end
+    end
+    
+    Request -- HTTP --> IngressPod
+    IngressPod -. Fetch configuration .-> Ingress
+    IngressPod -- HTTP --> Service
+    Service -- HTTP --> Pod
+```
+
+We will be using the [nginx ingress controller](https://kubernetes.github.io/ingress-nginx/), which is the most popular Ingress controller for Kubernetes.
+
+> [!NOTE]
+> Although this may a bit of a duplicate, an Ingress controller can totally be placed behind a layer 7 Load Balancer.
+
+## Splitting workloads
+
+Although sharing the same database between the web servers is required, you might want to split the web server worloads, for instance when:
+
+* You want to split the frontend, admin and API workloads, to avoid having one part of the application slowing down the others
+* You have different resource requirements for each workload (CPU, memory, capacity type, etc.)
+
+Splitting the web server workloads can be achieved by using a different `Deployment` for each workload, with its own `HorizontalPodAutoscaler` and `Service`.
+
+Then, you can use configure prefixes in your `Ingress` to route the traffic to the correct `Service`.
+
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": false}} }%%
+flowchart LR
+    Request
+    subgraph IngressNS["`**System namespace**`"]
+        IngressPod["`**Pod**
+        ingress controller`"]
+    end
+    subgraph MagentoNS["`**Magento namespace**`"]
+        direction TB
+        Ingress["`**Ingress**`"]
+        ServiceFrontend["`**Service**
+        frontend`"]
+        ServiceBackend["`**Service**
+        admin`"]
+        ServiceApi["`**Service**
+        api`"]
+        subgraph PodFrontend["`**Pod**
+        frontend`"]
+            ContainerNginxFrontend["`**Container**
+            nginx`"]
+            ContainerPhpFpmFrontend["`**Container**
+            PHP-FPM`"]
+            ContainerNginxFrontend -- TCP/9000 --> ContainerPhpFpmFrontend
+        end
+        subgraph PodBackend["`**Pod**
+        backend`"]
+            ContainerNginxBackend["`**Container**
+            nginx`"]
+            ContainerPhpFpmBackend["`**Container**
+            PHP-FPM`"]
+            ContainerNginxBackend -- TCP/9000 --> ContainerPhpFpmBackend
+        end
+        subgraph PodApi["`**Pod**
+        api`"]
+            ContainerNginxApi["`**Container**
+            nginx`"]
+            ContainerPhpFpmApi["`**Container**
+            PHP-FPM`"]
+            ContainerNginxApi -- TCP/9000 --> ContainerPhpFpmApi
+        end
+    end
+    
+    Request -- HTTP --> IngressPod
+    IngressPod -. Fetch configuration .-> Ingress
+    IngressPod -- HTTP\n/ --> ServiceFrontend
+    ServiceFrontend -- HTTP --> PodFrontend
+    IngressPod -- HTTP\n/admin --> ServiceBackend
+    ServiceBackend -- HTTP --> PodBackend
+    IngressPod -- HTTP\n/rest\n/graphql --> ServiceApi
+    ServiceApi -- HTTP --> PodApi
+```
+
+## Shared storage
+
+Magento / Adobe Commerce requires shared storage to store persistent data (cache, media, etc.) and share it between pods.
+

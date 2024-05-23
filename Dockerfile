@@ -30,6 +30,8 @@ RUN php -d memory_limit=2G bin/magento setup:static-content:deploy \
 
 RUN mv app/etc/env.php.bak app/etc/env.php
 
+RUN rm -rf var/*
+
 COPY docs/docker/php/custom.ini /usr/local/etc/php/conf.d/custom.ini
 COPY docs/docker/php/www.conf /usr/local/etc/php-fpm.d/www.conf
 

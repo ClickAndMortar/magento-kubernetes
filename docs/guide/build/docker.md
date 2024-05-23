@@ -202,7 +202,7 @@ bin/magento app:config:dump scopes themes i18n
 ```
 
 > [!IMPORTANT]
-> This command should be run outside of the Docker image, as it requires a database connection.
+> This command should be run outside the Docker image, as it requires a database connection.
 > The resulting `config.php` should be added to the VCS, so it's available when building the Docker image.
 
 > [!NOTE]
@@ -238,7 +238,11 @@ Once the static content is deployed, we can move back the `env.php` file:
 RUN mv app/etc/env.php.bak app/etc/env.php
 ```
 
-## PHP configuration
+We can now do some cleanup:
+
+```dockerfile
+RUN rm -rf var/*
+```
 
 Although the PHP configuration is generally good enough for most cases, you may want to tweak it to your needs.
 
@@ -284,7 +288,7 @@ COPY www.conf /usr/local/etc/php-fpm.d/www.conf
 
 ## nginx
 
-Now that we have our PHP-FPM image ready, we need to add an nginx server to serve our Magento / Adobe Commerce project, communicating with PHP-FPM using fastcgi.
+Now that we have our PHP-FPM image ready, we need to add a nginx server to serve our Magento / Adobe Commerce project, communicating with PHP-FPM using fastcgi.
 
 To serve static assets in an efficient way, we'll also copy the `pub/static` directory to the nginx image.
 
@@ -305,7 +309,9 @@ upstream fastcgi_backend {
 
 server {
    listen 80;
-   server_name <your-magento-hostname>;
+    
+   # server_name directive is not mandatory, as we're using the default server block
+
    set $MAGE_ROOT /app;
    set $MAGE_DEBUG_SHOW_ARGS 0;
 
@@ -320,32 +326,82 @@ Additionnaly, you may change the following in the resulting `vhost.conf` file:
 
 ::: code-group
 
-```nginx [At root level of vhost.conf]
-log_format nginxlog_json escape=json 
-    '{ "timestamp": "$time_iso8601", '
-    '"remote_addr": "$remote_addr", '
-    '"body_bytes_sent": $body_bytes_sent, '
-    '"request_time": $request_time, '
-    '"response_status": $status, '
-    '"request": "$request", '
-    '"request_method": "$request_method", '
-    '"host": "$host",'
-    '"remote_user": "$remote_user",'
-    '"request_uri": "$request_uri",'
-    '"query_string": "$query_string",'
-    '"upstream_addr": "$upstream_addr",'
-    '"http_x_forwarded_for": "$http_x_forwarded_for",'
-    '"http_x_real_ip": "$http_x_real_ip",'
-    '"http_referrer": "$http_referer", '
-    '"http_user_agent": "$http_user_agent", '
-    '"http_version": "$server_protocol" }';
-```
+```nginx [vhost.conf]
+log_format nginxlog_json escape=json # [!code ++]
+    '{ "timestamp": "$time_iso8601", ' # [!code ++]
+    '"remote_addr": "$remote_addr", ' # [!code ++]
+    '"body_bytes_sent": $body_bytes_sent, ' # [!code ++]
+    '"request_time": $request_time, ' # [!code ++]
+    '"response_status": $status, ' # [!code ++]
+    '"request": "$request", ' # [!code ++]
+    '"request_method": "$request_method", ' # [!code ++]
+    '"host": "$host",' # [!code ++]
+    '"remote_user": "$remote_user",' # [!code ++]
+    '"request_uri": "$request_uri",' # [!code ++]
+    '"query_string": "$query_string",' # [!code ++]
+    '"upstream_addr": "$upstream_addr",' # [!code ++]
+    '"http_x_forwarded_for": "$http_x_forwarded_for",' # [!code ++]
+    '"http_x_real_ip": "$http_x_real_ip",' # [!code ++]
+    '"http_referrer": "$http_referer", ' # [!code ++]
+    '"http_user_agent": "$http_user_agent", ' # [!code ++]
+    '"http_version": "$server_protocol" }'; # [!code ++]
 
-```nginx [Within the server block]
-access_log /dev/stdout nginxlog_json;
+server {
+    ...
+    access_log /dev/stdout nginxlog_json; # [!code ++]
+    ...
+}
 ```
 
 :::
+
+* Remove unnecessary blocks:
+  * `location ~* ^/setup($|/) { ... }`
+  * `location ~* ^/update($|/) { ... }`
+
+* Add a health check endpoint, to be able to monitor the nginx server:
+
+::: code-group
+    
+```nginx [vhost.conf]
+server {
+    ...
+
+    location /nginx-health { # [!code ++]
+        add_header Content-Type text/plain; # [!code ++]
+        return 200 'OK'; # [!code ++]
+    } # [!code ++]
+}
+```
+
+:::
+
+* Increase the buffers size in the main entry point:
+
+::: code-group
+
+```nginx [vhost.conf]
+    # PHP entry point for main application
+    location ~ ^/(index|get|static|errors/report|errors/404|errors/503|health_check)\.php$ {
+        fastcgi_buffers 16 16k; # [!code --]
+        fastcgi_buffer_size 32k; # [!code --]
+        fastcgi_buffers 16 32k; # [!code ++]
+        fastcgi_buffer_size 64k; # [!code ++]
+        fastcgi_busy_buffers_size 64k; # [!code ++]
+        proxy_buffer_size 128k; # [!code ++]
+        proxy_buffers 4 256k; # [!code ++]
+        proxy_busy_buffers_size 256k; # [!code ++]
+
+        ...
+    }
+```
+
+:::
+
+> [!INFO]
+> The complete `vhost.conf` file can be found [here](https://github.com/ClickAndMortar/magento-kubernetes/blob/main/docs/docker/nginx/vhost.nginx).
+
+---
 
 The resulting `Dockefile` should look like this:
 
@@ -397,7 +453,8 @@ Then push the images to your container registry, using `docker push`.
 > [!TIP]
 > When cross-building images for different architectures, you may want to use the `--platform` flag to specify the target architecture, such as `linux/amd64`, `linux/arm64`, etc.
 
-The complete `Dockerfile` can be found [here](https://github.com/ClickAndMortar/magento-kubernetes/blob/main/Dockerfile).
+> [!INFO]
+> The complete `Dockerfile` can be found [here](https://github.com/ClickAndMortar/magento-kubernetes/blob/main/Dockerfile).
 
 ## Tagging strategy
 

@@ -15,13 +15,15 @@ const config = defineConfig({
       { text: 'Introduction', link: '/guide/introduction' },
       { text: 'Requirements', link: '/guide/requirements' },
       {
-        text: 'Preparation',
+        text: '📚 Preparation',
+        collapsed: false,
         items: [
           { text: 'Environment variables', link: '/guide/preparation/environment-variables' },
         ]
       },
       {
-        text: 'Build',
+        text: '⚙️ Build',
+        collapsed: false,
         items: [
           { text: 'Introduction', link: '/guide/build/introduction' },
           { text: 'Docker image', link: '/guide/build/docker' },
@@ -31,11 +33,14 @@ const config = defineConfig({
         ]
       },
       {
-        text: 'Deployment',
+        text: '🚀 Deployment',
+        collapsed: false,
         items: [
           { text: 'Introduction', link: '/guide/deployment/introduction' },
           { text: 'External services', link: '/guide/deployment/external-services' },
           { text: 'Architecture', link: '/guide/deployment/architecture' },
+          { text: 'Resources and scaling', link: '/guide/deployment/resources-scaling' },
+          { text: 'Helm chart', link: '/guide/deployment/helm-chart' },
         ]
       }
     ],
