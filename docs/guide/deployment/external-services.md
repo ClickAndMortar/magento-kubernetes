@@ -6,6 +6,16 @@ title: External services
 
 Magento / Adobe Commerce relies on several external services to function properly.
 
+```mermaid
+graph TD
+    A[Magento / Adobe Commerce] -->|Database| B[MySQL]
+    A -->|Data cache| C[Redis]
+    A -. Page cache .-> D[Varnish]
+    A -->|Search| E[Elasticsearch]
+    F[RabbitMQ]
+    A -. Message .-> F 
+```
+
 The following versions are currently supported by Magento / Adobe Commerce 2.4.7:
 
 | Category   | Service                   | Version | Type       | Required             |

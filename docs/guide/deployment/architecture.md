@@ -296,5 +296,53 @@ flowchart LR
 
 ## Shared storage
 
-Magento / Adobe Commerce requires shared storage to store persistent data (cache, media, etc.) and share it between pods.
+Magento / Adobe Commerce requires storage to store persistent data at runtime (cache, media, etc.) and share it between Pods.
 
+The following directories might need to be shared between Pods:
+
+| Directory           | Description                          | Required                        |
+|---------------------|--------------------------------------|---------------------------------|
+| `pub/media`         | Media files                          | :heavy_check_mark: <sup>1</sup> |
+| `pub/static/_cache` | Static files cache (i.e. merged CSS) | If merge is enabled             |
+| `var`               | Cache, logs, reports, sessions, etc. | :heavy_check_mark: <sup>2</sup> |
+
+> <sup>1</sup> : The content of the `pub/media` directory might be stored in an external storage (i.e. S3, GCS, etc.), which would allow to avoid sharing the directory between pods.
+> 
+> <sup>2</sup> : Cache and sessions should be stored in Redis. Logs can be shared to facilitate cross-pod debugging, but may have simultaneous write issues. We'll see further how to get logs printed to standard output of Pods.
+
+## Configuration and secrets
+
+Configuration and secrets should be stored in `ConfigMaps` and `Secrets` respectively.
+
+We will be using those to store our environment variables, and _mount_ them in the Pods containers.
+
+```mermaid
+%%{init: {"flowchart": {"htmlLabels": false}} }%%
+graph LR
+    subgraph "`**Web server Pod**`"
+        A["`**Container**
+        nginx`"]
+        B["`**Container**
+        PHP-FPM`"]
+    end
+    subgraph "`**Cron Pod**`"
+        D["`**Container**
+        PHP CLI`"]
+    end
+    subgraph "`**Consumer Pod**`"
+        E["`**Container**
+        PHP CLI`"]
+    end
+    
+    ConfigMap --> B
+    Secret --> B
+    
+    ConfigMap --> D
+    Secret --> D
+    
+    ConfigMap --> E
+    Secret --> E
+    
+    ConfigMap["`**ConfigMap**`"]
+    Secret["`**Secret**`"]
+```

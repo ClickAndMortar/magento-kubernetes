@@ -264,7 +264,7 @@ The content of the above ini file should be saved in a file, such as `custom.ini
 COPY custom.ini /usr/local/etc/php/conf.d/custom.ini
 ```
 
-## FPM configuration
+## FPM configuration {#fpm-config}
 
 Here is a recommended pool configuration:
 

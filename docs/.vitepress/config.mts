@@ -19,6 +19,7 @@ const config = defineConfig({
         collapsed: false,
         items: [
           { text: 'Environment variables', link: '/guide/preparation/environment-variables' },
+          { text: 'Secrets', link: '/guide/preparation/secrets' },
         ]
       },
       {
