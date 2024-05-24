@@ -19,6 +19,7 @@ const config = defineConfig({
         collapsed: false,
         items: [
           { text: 'Environment variables', link: '/guide/preparation/environment-variables' },
+          { text: 'Configuration', link: '/guide/preparation/configuration' },
           { text: 'Secrets', link: '/guide/preparation/secrets' },
         ]
       },
@@ -45,7 +46,10 @@ const config = defineConfig({
         ]
       }
     ],
-
+    editLink: {
+      pattern: 'https://github.com/ClickAndMortar/magento-kubernetes/edit/main/docs/:path',
+      text: 'Edit this page on GitHub'
+    },
     socialLinks: [
       { icon: 'github', link: 'https://github.com/ClickAndMortar/magento-kubernetes' }
     ],

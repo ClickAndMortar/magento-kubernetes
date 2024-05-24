@@ -30,7 +30,9 @@ What's great about `sops` is that only the values are encrypted, not the structu
 
 For example, this is what the update of the MySQL password in a `sops`-encrypted file using AWS KMS looks like:
 
-```yaml
+::: code-group
+
+```yaml [secrets.yaml]
 mysql:
     password: ENC[AES256_GCM,data:xxxx,iv:xxxx,tag:xxxx,type:str] # [!code --]
     password: ENC[AES256_GCM,data:yyyy,iv:yyyy,tag:yyyy,type:str] # [!code ++]
@@ -54,6 +56,8 @@ sops:
   unencrypted_suffix: _unencrypted
   version: 3.7.3
 ```
+
+:::
 
 You may refer to the [official documentation](https://github.com/getsops/sops) to install `sops` and learn more about its usage.
 

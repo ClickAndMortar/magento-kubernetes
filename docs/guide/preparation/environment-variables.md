@@ -28,12 +28,12 @@ The slash character of config paths should be replaced with double underscores:
 > [!IMPORTANT]
 > Magento / Adobe Commerce caches the configuration values. If you change the value of an environment variable, you need to clear the cache to see the changes.
 
-In a regular Magento / Adobe Commerce deployment, you might need to define the following environment variables for your config:
+In a regular Magento / Adobe Commerce deployment, you might need to define the following environment variables for your config, **in addition to the ones you've defined in your `env.php` file**:
 
-| Variable name                | Description                                                                 |
-|------------------------------|-----------------------------------------------------------------------------|
-| `MAGENTO_DATABASE_HOST`      | Database host                                                               |
-
+| Variable name                                 | Description                                                 |
+|-----------------------------------------------|-------------------------------------------------------------|
+| `CONFIG__DEFAULT__WEB__UNSECURE__BASE_URL`    | Fully qualified base URL of your Magento, ending with a `/` |
+| `CONFIG__DEFAULT__WEB__COOKIE__COOKIE_DOMAIN` | Cookie domain                                               |
 
 ## `env.php`
 
