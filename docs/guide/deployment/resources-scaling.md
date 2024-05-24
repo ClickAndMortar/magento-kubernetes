@@ -135,6 +135,9 @@ spec:
                     <label-key>: <label-value>
 ```
 
+> [!TIP]
+> To ensure high availability, you should also have an anti-affinity rule based on the `failure-domain.beta.kubernetes.io/zone` label, to ensure that Pods are not scheduled on the same Availability Zone.
+
 ## Horizontal scaling
 
 We want to achieve two main goals with horizontal scaling:
@@ -193,3 +196,16 @@ You should keep your `minReplicas` as low as possible, to save resources and cos
 From our experience, a good CPU utilization percentage to start with is **70%**, which is high enough to prevent over-provisioning, but low enough to ensure that the `Pods` can handle traffic spikes, by scaling up before the CPU usage reaches 100%.
 
 As always, you should monitor your `Pods` and `Nodes` to ensure that the autoscaling is working as expected, and adjust the configuration if needed.
+
+## Cluster sizing
+
+When sizing your Kubernetes cluster, you should take into account the resources needed by your workloads, as well as the capacity of your Nodes.
+
+In order to be scale horizontally in a cost-effective way, you should aim to have a cluster with relatively small Nodes, **between 4 and 8 CPU cores**.
+
+On cloud providers, instances cost is generally proportional to the number of CPU cores and available memory, so having a cluster with small Nodes won't be more expensive than having a cluster with large Nodes.
+
+You should keep in mind that system processes and `DaemonSets` will consume some CPU and memory on each Node, betwwen 0.5 and 1 CPU cores, so you should take that into account when sizing your Nodes:
+
+* If nodes are too large, you may end up with underutilized resources
+* If nodes are too small, you will proportionally have less resources for your Pods

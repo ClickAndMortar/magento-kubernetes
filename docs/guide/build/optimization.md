@@ -45,6 +45,8 @@ $ find vendor/ -type d \( -iname 'test' -o -iname 'tests' \) -exec du -s {} + | 
 
 We have over **200MB** of test files in our `vendor` directory. We can remove them by adding the following line to our `Dockerfile`.
 
+We an also completely remove the `dev` directory (which is almost **80MB**), but as it is versioned, the easy way is to avoid copying it in the first place, adding it to the `.dockerignore` file.
+
 As mentionned before, removing them in a new `RUN` instruction will not reduce the size of the image, as the files will still be present in the previous layer.
 
 Hence, we need to remove them in the same layer as the `composer install` command:
@@ -52,7 +54,9 @@ Hence, we need to remove them in the same layer as the `composer install` comman
 ```dockerfile
 RUN composer install --no-dev --no-interaction --no-progress --no-suggest \
     # Remove test directories
-    && find vendor/ -type d \( -iname 'test' -o -iname 'tests' \) -exec rm -rf {} +
+    && find vendor/ -type d \( -iname 'test' -o -iname 'tests' \) -exec rm -rf {} + \
+    # Remove dev directory \
+    && rm -rf dev
 ```
 
 > [!WARNING]

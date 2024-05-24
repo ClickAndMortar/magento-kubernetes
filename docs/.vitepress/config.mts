@@ -43,15 +43,29 @@ const config = defineConfig({
           { text: 'Architecture', link: '/guide/deployment/architecture' },
           { text: 'Resources and scaling', link: '/guide/deployment/resources-scaling' },
           { text: 'Helm chart', link: '/guide/deployment/helm-chart' },
+          { text: 'CI/CD', link: '/guide/deployment/ci-cd' },
         ]
       },
       {
-        text: '🧩 Advanced',
+        text: '💡 Advanced',
         collapsed: false,
         items: [
           { text: 'High availability', link: '/guide/advanced/high-availability' },
+          { text: 'Monitoring', link: '/guide/advanced/monitoring' },
+          { text: 'Log management', link: '/guide/advanced/log-management' },
+          { text: 'ARM64 architecture', link: '/guide/advanced/arm64-architecture' },
+          { text: 'Read-only filesystem', link: '/guide/advanced/read-only-filesystem' },
+          { text: 'Amazon S3 Media storage', link: '/guide/advanced/amazon-s3-media-storage' },
+          { text: 'Spot / preemptible instances', link: '/guide/advanced/spot-preemptible-instances' },
         ]
       },
+      {
+        text: '🧩 Modules',
+        collapsed: false,
+        items: [
+          { text: 'Selection', link: '/guide/modules/selection' }
+        ]
+      }
     ],
     editLink: {
       pattern: 'https://github.com/ClickAndMortar/magento-kubernetes/edit/main/docs/:path',

@@ -12,7 +12,7 @@ The following topics will be covered:
 
 * Making your Magento / Adobe Commerce project Kubernetes-ready / cloud-native
 * Building the Docker image
-* Deploying to Kubernetes
+* Deploying to Kubernetes with zero downtime (ZDD)
 * Advanced topics
   * Continuous Integration / Continuous Deployment (CI/CD)
   * Scaling
