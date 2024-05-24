@@ -63,9 +63,6 @@ One `Deployment` needs to be created for each consumer, each containing a single
 > At the time of writing, Magento / Adobe Commerce does not handle UNIX signals properly, which means that the containers will not be able to handle graceful shutdowns.
 > Therefore, the `Pods` will be terminated immediately, without giving the application time to finish processing the current message.
 
-> [!INFO]
-> The `queue/consumers_wait_for_messages` configuration setting in `env.php` must be set to `1` to avoid having the consumers restarting too often.
-
 At the time of writing, the following consumers are available:
 
 * `saveConfigProcessor`

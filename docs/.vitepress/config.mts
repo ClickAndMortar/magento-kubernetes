@@ -44,7 +44,14 @@ const config = defineConfig({
           { text: 'Resources and scaling', link: '/guide/deployment/resources-scaling' },
           { text: 'Helm chart', link: '/guide/deployment/helm-chart' },
         ]
-      }
+      },
+      {
+        text: '🧩 Advanced',
+        collapsed: false,
+        items: [
+          { text: 'High availability', link: '/guide/advanced/high-availability' },
+        ]
+      },
     ],
     editLink: {
       pattern: 'https://github.com/ClickAndMortar/magento-kubernetes/edit/main/docs/:path',

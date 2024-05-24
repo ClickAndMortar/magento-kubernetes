@@ -12,7 +12,8 @@ The admin URL is the entry point to the Magento Admin. It is important to change
 
 To change the admin URL, update the `backend` configuration:
 
-```php
+::: code-group
+```php [env.php]
 <?php
 return [
     ...
@@ -22,13 +23,17 @@ return [
     ...
 ];
 ```
+:::
+
+## Database
+
+See [previous page](/guide/preparation/environment-variables#env-php).
 
 ## Cache
 
 Instead of using the default file-based cache, you can use Redis for better performance. To configure Redis, update the `cache` configuration:
 
 ::: code-group
-
 ```php [env.php]
 <?php
 return [
@@ -173,4 +178,187 @@ sequenceDiagram
         end
     end
     P1 ->> B: Return web page
+```
+
+## Locking
+
+Magento / Adobe Commerce uses locks in some parts of the application to avoid race conditions.
+
+The default lock provider is the database (`db`), which can be switched to Redis (`cache`) for better performance:
+
+::: code-group
+```php [env.php]
+<?php
+return [
+    ...
+    'lock' => [
+        'provider' => 'cache',
+    ],
+    ...
+];
+```
+:::
+
+> [!NOTE]
+> The `cache` lock provider is only useful when using Redis as the cache backend.
+
+## Sessions
+
+Magento / Adobe Commerce uses the file system to store session data by default.
+
+This should be switched to Redis:
+
+::: code-group
+```php [env.php]
+<?php
+return [
+    ...
+    'session' => [
+        'save' => 'redis',
+        'redis' => [
+            'host' => getenv('MAGENTO_REDIS_HOST'),
+            'port' => getenv('MAGENTO_REDIS_PORT') ?: '6379',
+            'password' => getenv('MAGENTO_REDIS_PASSWORD') ?: '',
+            'database' => getenv('MAGENTO_REDIS_DATABASE_SESSION') ?: '2',
+            'compression_library' => 'gzip',
+        ],
+    ],
+    ...
+];
+```
+:::
+
+## Crypt key
+
+The `crypt/key` configuration is used to encrypt and decrypt sensitive data in Magento / Adobe Commerce, such as payment gateway credentials.
+
+It is also used to sign JSON Web Tokens (JWT) used for API authentication (customers and admin users).
+
+> [!IMPORTANT]
+> You should use a different crypt key for each environment (development, staging, production) to ensure that sensitive data encrypted in one environment cannot be decrypted in another environment, and to avoid JWT replay attacks.
+
+> [!TIP]
+> The `crypt/key` config can contain several keys, separated by a space. Magento / Adobe Commerce stores encrypted data prefixed with the index of the key used to encrypt it. This allows you to rotate the keys without losing the ability to decrypt data encrypted with the old keys.
+
+## Deployment
+
+During each request, Magento / Adobe Commerce checks if config data in the deployment configuration files was changed.
+
+If so, it will display an error message, prompting you to run the `bin/magento app:config:import` or `bin/magento setup:upgrade` command to apply the changes.
+
+To avoid issues when deploying a new release of your application, you can enable the Blue-Green deployment feature, which disables this check:
+
+::: code-group
+```php [env.php]
+<?php
+return [
+    ...
+    'deployment' => [
+        'blue_green' => [
+            'enabled' => true
+        ]
+    ],
+    ...
+];
+```
+:::
+
+## Remote storage
+
+Magento / Adobe Commerce uses the file system to store media files by default.
+
+This should be switched to Amazon S3 as a remote storage service for better performance and scalability.
+
+To configure Amazon S3, update the `remote_storage` configuration:
+
+::: code-group
+```php [env.php]
+<?php
+return [
+    ...
+    'remote_storage' => [
+        'driver' => 'aws-s3',
+        'config' => [
+            'bucket' => getenv('MAGENTO_REMOTE_STORAGE_PUBLIC_BUCKET'),
+            'region' => getenv('MAGENTO_REMOTE_STORAGE_REGION')
+        ]
+    ],
+    ...
+];
+```
+:::
+
+> [!NOTE]
+> This assumes that you have already set up an Amazon S3 bucket, and that either the AWS access and secret keys are available as environment variables, or that the Pods have an IAM role with the necessary permissions to access the bucket (i.e. [Pod Identities](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html) or [IRSA](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)).
+
+## Queuing
+
+Magento / Adobe Commerce uses AMQP (RabbitMQ) for queuing by default.
+
+However, in most use cases, using the database as a queue backend is sufficient:
+
+```sql
+> show tables like 'queue%';
++--------------------------------+
+| Tables_in_magento (queue%)     |
++--------------------------------+
+| queue                          |
+| queue_lock                     |
+| queue_message                  |
+| queue_message_status           |
+| queue_poison_pill              |
++--------------------------------+
+```
+
+The options can be configured in the `queue` configuration:
+
+::: code-group
+```php [env.php (Database)]
+<?php
+return [
+    ...
+    'queue' => [
+        'default_connection' => 'db',
+    ],
+    ...
+];
+```
+
+```php [env.php (AMQP)]
+<?php
+return [
+    ...
+    'queue' => [
+        'amqp' => [
+            'host' => getenv('MAGENTO_RABBITMQ_HOST'),
+            'port' => getenv('MAGENTO_RABBITMQ_PORT') ?: '5672',
+            'user' => getenv('MAGENTO_RABBITMQ_USER') ?: 'rabbitmq',
+            'password' => getenv('MAGENTO_RABBITMQ_PASSWORD'),
+            'virtualhost' => getenv('MAGENTO_RABBITMQ_VHOST') ?: '/'
+        ]
+    ],
+    ...
+];
+```
+:::
+
+> [!NOTE]
+> In both cases, the `queue/consumers_wait_for_messages` setting should be set to `1` to avoid having the consumers restarting indefinitely when there are no messages in the queue.
+
+## GraphQL
+
+GraphQL introspection should be disabled in production to prevent leaking sensitive information about your Magento / Adobe Commerce application.
+
+To disable GraphQL introspection, update the `graphql` configuration:
+
+::: code-group
+```php [env.php]
+<?php
+return [
+    ...
+    'graphql' => [
+        'disable_introspection' => true
+    ],
+    ...
+];
 ```

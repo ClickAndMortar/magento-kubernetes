@@ -35,6 +35,24 @@ In a regular Magento / Adobe Commerce deployment, you might need to define the f
 | `CONFIG__DEFAULT__WEB__UNSECURE__BASE_URL`    | Fully qualified base URL of your Magento, ending with a `/` |
 | `CONFIG__DEFAULT__WEB__COOKIE__COOKIE_DOMAIN` | Cookie domain                                               |
 
+### Elasticsearch / OpenSearch
+
+Because Elasticsearch / OpenSearch settings are stored in the database, you need to define the following environment variables:
+
+| Variable name                                                 | Description                                              | Default value             |
+|---------------------------------------------------------------|----------------------------------------------------------|---------------------------|
+| `CONFIG__DEFAULT__CATALOG__SEARCH__ENGINE`                    | Engine to use: `elasticsearch7` (legacy) or `opensearch` | `elasticsearch7`          |
+| `CONFIG__DEFAULT__CATALOG__SEARCH__<ENGINE>__SERVER_HOSTNAME` | Server hostname or IP address                            | `127.0.0.1` / `localhost` |
+| `CONFIG__DEFAULT__CATALOG__SEARCH__<ENGINE>__SERVER_PORT`     | Server port                                              | `9200`                    |
+| `CONFIG__DEFAULT__CATALOG__SEARCH__<ENGINE>__INDEX_PREFIX`    | Indexes name prefix                                      | `magento2`                |
+| `CONFIG__DEFAULT__CATALOG__SEARCH__<ENGINE>__ENABLE_AUTH`     | Enable basic authentication                              | `0`                       |
+| `CONFIG__DEFAULT__CATALOG__SEARCH__<ENGINE>__USERNAME`        | Authentication username                                  |                           |
+| `CONFIG__DEFAULT__CATALOG__SEARCH__<ENGINE>__PASSWORD`        | Authentication password                                  |                           |
+
+> [!NOTE]
+> Magento / Adobe Commerces uses different config paths for Elasticsearch and OpenSearch. You need to define the correct one for your environment, replacing `<ENGINE>` with `ELASTICSEARCH7` or `OPENSEARCH` in the environment variables.<br/>
+> You may omit declaring some of these variables if you are using the default values.
+
 ## `env.php`
 
 Magento / Adobe Commerce does not offer a mechanism similar to the one above for values of `env.php`.
@@ -80,3 +98,12 @@ You may also define defaults for those environment variables in your `env.php` f
     ],
     ...
 ```
+
+The following configuration sections should be updated to use environment variables:
+
+* `db`
+* `cache`
+* `session`
+* `queue`
+
+See next page for examples.
