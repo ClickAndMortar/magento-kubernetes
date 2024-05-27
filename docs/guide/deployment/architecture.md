@@ -307,6 +307,15 @@ The following directories might need to be shared between Pods:
 > 
 > <sup>2</sup> : Cache and sessions should be stored in Redis. Logs can be shared to facilitate cross-pod debugging, but may have simultaneous write issues. We'll see further how to get logs printed to standard output of Pods.
 
+If you decide to share the directories between `Pods`, you will need to use `PersistentVolumes` and `PersistentVolumeClaims` with a `ReadWriteMany` compatible `StorageClass`.
+
+> [!INFO]
+> Few `ReadWriteMany` storage classes options are available for Kubernetes, you should rely on the one provided by your cloud provider (i.e. AWS EFS, GCP Filestore, Azure Files, etc.), which is most of the time NFS-based.
+
+> [!TIP]
+> You should avoid as much as possible sharing directories between `Pods` (and more generally persisting data to disk), as it might lead to performance issues and data corruption.<br/>
+> Prefer, whenever possible, using external object storage solutions (i.e. S3, GCS, etc.) to store persistent data.
+
 ## Configuration and secrets
 
 Configuration and secrets should be stored in `ConfigMaps` and `Secrets` respectively.

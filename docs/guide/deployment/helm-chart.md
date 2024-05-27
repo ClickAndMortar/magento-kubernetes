@@ -18,11 +18,12 @@ When deploying our Magento / Adobe Commerce, the process is as follows:
    * `ConfigMap`
    * `Secret`
    * `CronJob`
+   * Etc.
 3. Wait for the new `Pods` to be ready
 4. Flush the cache
 
 > [!NOTE]
-> When using per release Redis ID prefixes, there is no need to flush the cache after each deployment.
+> When [using per release Redis ID prefixes](/guide/preparation/configuration#redis-id-prefix), there is no need to flush the cache after each deployment.
 
 > [!IMPORTANT]
 > We will rely on [Helm hooks](https://helm.sh/docs/topics/charts_hooks/) to run the `bin/magento setup:upgrade` in a Kubernetes `Job` (during the `pre-install` and `pre-upgrade` hooks).<br/>
@@ -47,4 +48,13 @@ chart/
 ├── Chart.yaml
 ├── secrets.yaml
 └── values.yaml
+```
+
+> [!NOTE]
+> Our sample Magento / Adobe Commerce Helm Chart will soon be available in our [GitHub repository](https://github.com/ClickAndMortar/magento-kubernetes).
+
+To follow Helm's best practices, you should initialize your Helm chart with the following command:
+
+```shell
+helm create mychart
 ```

@@ -5,6 +5,7 @@ import {withMermaid} from "vitepress-plugin-mermaid";
 const config = defineConfig({
   title: "Magento Kubernetes",
   description: "The ultimate guide to deploy Magento on Kubernetes",
+  lastUpdated: true,
   themeConfig: {
     logo: '/images/logo-transp.png',
     nav: [
@@ -43,7 +44,7 @@ const config = defineConfig({
           { text: 'Architecture', link: '/guide/deployment/architecture' },
           { text: 'Resources and scaling', link: '/guide/deployment/resources-scaling' },
           { text: 'Helm chart', link: '/guide/deployment/helm-chart' },
-          { text: 'CI/CD', link: '/guide/deployment/ci-cd' },
+          { text: 'CI/CD 🚧', link: '/guide/deployment/ci-cd' },
         ]
       },
       {
@@ -51,12 +52,12 @@ const config = defineConfig({
         collapsed: false,
         items: [
           { text: 'High availability', link: '/guide/advanced/high-availability' },
-          { text: 'Monitoring', link: '/guide/advanced/monitoring' },
-          { text: 'Log management', link: '/guide/advanced/log-management' },
           { text: 'ARM64 architecture', link: '/guide/advanced/arm64-architecture' },
-          { text: 'Read-only filesystem', link: '/guide/advanced/read-only-filesystem' },
-          { text: 'Amazon S3 Media storage', link: '/guide/advanced/amazon-s3-media-storage' },
           { text: 'Spot / preemptible instances', link: '/guide/advanced/spot-preemptible-instances' },
+          { text: 'Monitoring 🚧', link: '/guide/advanced/monitoring' },
+          { text: 'Log management 🚧', link: '/guide/advanced/log-management' },
+          { text: 'Read-only filesystem 🚧', link: '/guide/advanced/read-only-filesystem' },
+          { text: 'Amazon S3 Media storage 🚧', link: '/guide/advanced/amazon-s3-media-storage' },
         ]
       },
       {

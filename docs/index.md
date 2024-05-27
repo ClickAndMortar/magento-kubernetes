@@ -6,9 +6,6 @@ hero:
   name: "Magento Kubernetes"
   text: "The ultimate guide"
   tagline: Easily deploy Magento / Adobe Commerce on Kubernetes
-  image:
-    src: /images/logo-transp-inv.png
-    alt: Magento Kubernetes logo
   actions:
     - theme: brand
       text: Get started

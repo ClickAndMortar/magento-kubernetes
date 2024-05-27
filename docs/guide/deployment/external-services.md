@@ -39,7 +39,3 @@ An up-to-date list of supported versions can be found in the [official documenta
 > [!INFO]
 > Whenever possible, we recommend using managed services for databases, caches, and message queues. Managed services are easier to maintain and scale, and they often come with built-in monitoring and backup solutions.
 > Although Adobe only officially supports AWS managed services, **you can use other cloud providers as well**, as long as the service versions are compatible with Magento / Adobe Commerce.
-
-## Database
-
-TODO
