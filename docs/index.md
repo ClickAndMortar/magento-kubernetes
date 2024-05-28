@@ -4,7 +4,7 @@ layout: home
 
 hero:
   name: "Magento Kubernetes"
-  text: "The ultimate guide"
+  text: "A complete guide"
   tagline: Easily deploy Magento / Adobe Commerce on Kubernetes
   actions:
     - theme: brand
