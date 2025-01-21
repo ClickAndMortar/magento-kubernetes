@@ -7,7 +7,7 @@ RUN apt-get update \
     libfreetype6-dev libicu-dev libjpeg62-turbo-dev libpng-dev libxslt1-dev libzip-dev libwebp-dev
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install -j$(nproc) bcmath gd intl pdo_mysql soap sockets xsl zip
+    && docker-php-ext-install -j$(nproc) bcmath gd intl opcache pdo_mysql soap sockets xsl zip
 
 RUN curl -sSL https://getcomposer.org/download/latest-2.x/composer.phar -o /usr/local/bin/composer \
     && chmod +x /usr/local/bin/composer
