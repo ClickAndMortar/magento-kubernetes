@@ -9,7 +9,11 @@ RUN apt-get update \
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j$(nproc) bcmath gd intl opcache pdo_mysql soap sockets xsl zip
 
-RUN curl -sSL https://getcomposer.org/download/latest-2.x/composer.phar -o /usr/local/bin/composer \
+# Composer épinglé et vérifié : SHA-256 recoupée entre getcomposer.org, la release GitHub et la signature GPG de Packagist.
+ARG COMPOSER_VERSION=2.10.3
+ARG COMPOSER_SHA256=7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6
+RUN curl -fsSL -o /usr/local/bin/composer "https://getcomposer.org/download/${COMPOSER_VERSION}/composer.phar" \
+    && echo "${COMPOSER_SHA256}  /usr/local/bin/composer" | sha256sum -c - \
     && chmod +x /usr/local/bin/composer
 
 WORKDIR /app
